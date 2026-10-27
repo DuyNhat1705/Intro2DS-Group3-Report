@@ -1,0 +1,17 @@
+name: report
+channels:
+  - conda-forge
+channel_priority: strict
+dependencies:
+  - python=3.12
+  - nodejs=20
+  - numpy=2.5.4
+  - pandas=3.0.6
+  - matplotlib-base=3.11.2
+  - plotly=6.8.0
+  - jupyterlab=4.6.4
+  - ipykernel=7.4.0
+  - notebook
+  - pip
+  - pip:
+      - jupyter-book==2.1.7

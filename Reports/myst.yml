@@ -1,0 +1,17 @@
+version: 1
+project:
+  title: Group 03 - Report
+  authors:
+    - name: DuyNhat1705
+  github: https://github.com/DuyNhat1705/Intro2DS-Group3-Report
+  math:
+    '\R': '\mathbb{R}'
+  toc:
+    - file: intro.md
+    - file: Report.ipynb
+site:
+  template: book-theme
+  title: Group 03 - Report
+  options:
+    logo_text: Group 03 - Report
+    hide_myst_branding: true

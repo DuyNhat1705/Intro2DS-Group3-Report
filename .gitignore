@@ -1,0 +1,11 @@
+# Jupyter Book
+Projects/_build/
+_build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+.venv/
+venv/
