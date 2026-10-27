@@ -9,3 +9,6 @@ _build/
 __pycache__/
 .venv/
 venv/
+
+# Local docs / yêu cầu
+yeucau/
