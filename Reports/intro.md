@@ -1,4 +1,4 @@
-# Group 03 — Introduction to Data Science
+# Introduction to Data Science - arXiv Project
 
 ## Milestone 1: Automated Multi-Version arXiv Data Harvesting & Performance Auditing
 
@@ -70,12 +70,14 @@ data/
 
 The comprehensive technical findings, statistical evaluations, and dynamic visualizations are detailed in the main report notebook:
 
+### Milestone 1: Data Crawling
 - **[Section 1: Overview & Scope](Report.ipynb#1-overview)**: Pipeline design principles, schema specifications, and target repository goals.
 - **[Section 2: Implementation & Robustness](Report.ipynb#2-implementation)**: Deep dive into API interaction, retry logic with exponential backoff, rate limit enforcement, and software tooling.
 - **[Section 3: Data Statistics](Report.ipynb#3-data-statistics)**: Scraping success rates, failure breakdowns, file size reduction via figure stripping, version distributions, and primary categories.
 - **[Section 4: Performance Evaluation](Report.ipynb#4-performance-evaluation)**: System resource monitoring (CPU, RAM, Disk I/O), timing breakdowns across pipeline phases, and bottleneck analyses.
 - **[Section 5: Conclusion & Future Work](Report.ipynb#5-conclusion)**: Key takeaways, real-world engineering challenges, and roadmap for Milestone 2.
 
+### Milestone 2: Data Parsing
 ---
 
-👉 **Ready to explore the data and analyses?** Proceed directly to the **[Milestone 1 Report](Report.ipynb)**.
+👉 **Ready to explore the data and analyses?** Proceed directly to the **[Report](Report.ipynb)**.

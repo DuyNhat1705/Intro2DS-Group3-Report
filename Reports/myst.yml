@@ -1,8 +1,8 @@
 version: 1
 project:
-  title: Group 03 - Report
+  title: Group 03 - arXiv Project
   authors:
-    - name: DuyNhat1705
+    - name: Group 03
   github: https://github.com/DuyNhat1705/Intro2DS-Group3-Report
   math:
     '\R': '\mathbb{R}'
@@ -11,7 +11,7 @@ project:
     - file: Report.ipynb
 site:
   template: book-theme
-  title: Group 03 - Report
+  title: arXiv Project
   options:
-    logo_text: Group 03 - Report
+    logo_text: arXiv Project
     hide_myst_branding: true
