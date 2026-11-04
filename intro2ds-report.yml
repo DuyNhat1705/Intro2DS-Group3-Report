@@ -11,6 +11,7 @@ dependencies:
   - plotly=6.8.0
   - jupyterlab=4.6.4
   - ipykernel=7.4.0
+  - pyarrow=26.0.0
   - notebook
   - pip
   - pip:

@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-11-01T08:26:45",
+  "config": {
+    "RUN_RANGES": [
+      4
+    ],
+    "WORKER": "R4",
+    "RANGES_TO_RUN": [
+      4
+    ],
+    "SAMPLE_N": null,
+    "RUN_METADATA": true,
+    "RUN_SOURCE": true,
+    "RUN_REFS": true,
+    "PARALLEL": true,
+    "REPORT_ALL_RANGES": false,
+    "ARXIV_DELAY": 3.0,
+    "ARXIV_MAX_DELAY": 6.0,
+    "KEEP_ARCHIVE": false,
+    "S2_BATCH_SIZE": 100,
+    "S2_DELAY_WITH_KEY": 1.0,
+    "RETRY_NOT_FOUND": false,
+    "MAX_CONSECUTIVE_ERRORS": 5,
+    "COOLDOWNS_SEC": [
+      300,
+      600,
+      900
+    ],
+    "SOURCE_WRITE_QUEUE": 3,
+    "METADATA_BATCH_SIZE": 100,
+    "MAX_RUN_HOURS": 11.5,
+    "MONITOR_EVERY": 1.0,
+    "DISK_EVERY": 300.0,
+    "SOURCE_STATE_FLUSH_EVERY": 120.0,
+    "PERSIST_TO_DRIVE": true
+  },
+  "data": {
+    "n_ids": 5000,
+    "n_papers_found": 5000,
+    "n_metadata_not_found": 0,
+    "n_papers_success": 4999,
+    "success_rate_over_ids": 0.9998,
+    "success_rate_over_found": 0.9998,
+    "n_versions_total": 6150,
+    "n_versions_done": 5822,
+    "n_versions_no_tex": 303,
+    "n_versions_not_found": 24,
+    "n_papers_with_tex": 4726,
+    "avg_archive_bytes": 3974827.479263648,
+    "avg_size_before_bytes": 4708543.022640711,
+    "avg_size_after_bytes": 183915.63732543378,
+    "size_reduction_ratio": 0.9609400112856381,
+    "n_refs_asked": 5000,
+    "refs_status_counts": {
+      "ok": 4571,
+      "no_refs": 428,
+      "not_found": 1
+    },
+    "refs_success_rate": 0.9142,
+    "avg_refs_per_paper_ok": 32.02931524830453,
+    "avg_refs_per_paper_asked": 29.2812,
+    "n_references_all": 146406,
+    "avg_refs_with_arxiv_per_paper_ok": 17.894333843797856,
+    "ref_arxiv_coverage": 0.5586861194213352
+  },
+  "performance": {
+    "n_workers": 1,
+    "n_sessions": 5,
+    "wall_time_sec": 45537.76300287247,
+    "machine_time_sec": 45537.76300287247,
+    "wall_time_per_worker_sec": {
+      "R4": 45537.76300287247
+    },
+    "time_per_paper_mean_sec": 10.556943788757751,
+    "time_per_paper_median_sec": 5.425999999999999,
+    "time_per_paper_p95_sec": 36.63529999999999,
+    "machine_time_per_id_sec": 9.107552600574493,
+    "entry_discovery_total_sec": 395.4,
+    "source_total_sec": 51943.754,
+    "refs_total_sec": 867.3,
+    "arxiv_retry_events": {
+      "cut": 463,
+      "rate_limited": 177,
+      "network_error": 6
+    },
+    "n_cooldowns": 5,
+    "cooldown_sec_total": 2400.0,
+    "throughput_papers_per_hour": 395.19727833062,
+    "rss_max_bytes": 997994496.0,
+    "rss_mean_bytes": 339316283.071676,
+    "peak_rss_kernel_bytes": 997814272.0,
+    "disk_max_bytes": 1001471987.0,
+    "output_size_bytes": 946634293,
+    "tables_size_bytes": 38699894
+  },
+  "versions_distribution": {
+    "1": 4059,
+    "2": 782,
+    "3": 125,
+    "4": 21,
+    "5": 11,
+    "6": 1,
+    "7": 1
+  }
+}

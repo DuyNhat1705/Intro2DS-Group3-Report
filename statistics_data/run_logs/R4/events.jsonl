@@ -1,0 +1,7 @@
+{"run_id": "R4-20261031-180438", "t": 1793475941.3887906, "lane": "arxiv", "kind": "cooldown", "message": "2608.06903: Giving up on https://export.arxiv.org/src/2608.06903v1 (last status: 429); nghỉ 300s rồi thử lại (1/3)", "seconds": 300}
+{"run_id": "R4-20261031-180438", "t": 1793476452.9732494, "lane": "arxiv", "kind": "cooldown", "message": "2608.06903: Giving up on https://export.arxiv.org/src/2608.06903v1 (last status: 429); nghỉ 600s rồi thử lại (2/3)", "seconds": 600}
+{"run_id": "R4-20261031-180438", "t": 1793477264.4920418, "lane": "arxiv", "kind": "cooldown", "message": "2608.06903: Giving up on https://export.arxiv.org/src/2608.06903v1 (last status: 429); nghỉ 900s rồi thử lại (3/3)", "seconds": 900}
+{"run_id": "R4-20261031-180438", "t": 1793478507.4020295, "lane": "arxiv", "kind": "cooldown", "message": "2608.06907: Giving up on https://export.arxiv.org/src/2608.06907v1 (last status: 429); nghỉ 300s rồi thử lại (1/3)", "seconds": 300}
+{"run_id": "R4-20261031-180438", "t": 1793510687.046205, "lane": "arxiv", "kind": "cooldown", "message": "2608.08960: Giving up on https://export.arxiv.org/src/2608.08960v2 (last status: 429); nghỉ 300s rồi thử lại (1/3)", "seconds": 300}
+{"run_id": "R4-20261031-180438", "t": 1793511324.4329486, "lane": "all", "kind": "time_limit", "message": "Đạt MAX_RUN_HOURS=11.5"}
+{"run_id": "R4-20261101-061241", "t": 1793514343.180714, "lane": "arxiv", "kind": "lane_stop", "message": "5 lỗi liên tiếp, lỗi cuối (2608.06952): DownloadError('Giving up on https://export.arxiv.org/src/2608.06952v1 (last status: None)')"}

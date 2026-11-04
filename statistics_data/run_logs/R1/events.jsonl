@@ -1,0 +1,19 @@
+{"run_id": "R1-20261101-185210", "t": 1793559130.3353357, "lane": "s2", "kind": "batch_failed", "message": "batch 1 (2609.27834...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261101-185210", "t": 1793559131.1874845, "lane": "s2", "kind": "batch_failed", "message": "batch 2 (2609.27934...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261101-185210", "t": 1793559132.1985502, "lane": "s2", "kind": "batch_failed", "message": "batch 3 (2609.28034...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261101-185210", "t": 1793559133.1881976, "lane": "s2", "kind": "batch_failed", "message": "batch 4 (2609.28134...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261101-185210", "t": 1793559134.1803923, "lane": "s2", "kind": "batch_failed", "message": "batch 5 (2609.28234...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261101-185210", "t": 1793559135.3663027, "lane": "s2", "kind": "lane_stop", "message": "5 batch lỗi liên tiếp"}
+{"run_id": "R1-20261102-040753", "t": 1793592473.7333863, "lane": "s2", "kind": "batch_failed", "message": "batch 1 (2609.27834...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261102-040753", "t": 1793592474.510195, "lane": "s2", "kind": "batch_failed", "message": "batch 2 (2609.27934...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261102-040753", "t": 1793592475.4906557, "lane": "s2", "kind": "batch_failed", "message": "batch 3 (2609.28034...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261102-040753", "t": 1793592476.506737, "lane": "s2", "kind": "batch_failed", "message": "batch 4 (2609.28134...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261102-040753", "t": 1793592477.5296068, "lane": "s2", "kind": "batch_failed", "message": "batch 5 (2609.28234...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261102-040753", "t": 1793592478.129361, "lane": "s2", "kind": "lane_stop", "message": "5 batch lỗi liên tiếp"}
+{"run_id": "R1-20261103-073517", "t": 1793691317.9283078, "lane": "s2", "kind": "batch_failed", "message": "batch 1 (2609.27834...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261103-073517", "t": 1793691318.9628348, "lane": "s2", "kind": "batch_failed", "message": "batch 2 (2609.27934...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261103-073517", "t": 1793691319.962412, "lane": "s2", "kind": "batch_failed", "message": "batch 3 (2609.28034...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261103-073517", "t": 1793691320.9536884, "lane": "s2", "kind": "batch_failed", "message": "batch 4 (2609.28134...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261103-073517", "t": 1793691321.973957, "lane": "s2", "kind": "batch_failed", "message": "batch 5 (2609.28234...): RuntimeError('Unexpected status 403: {\"message\":\"Forbidden\"}\\n')"}
+{"run_id": "R1-20261103-073517", "t": 1793691322.411364, "lane": "s2", "kind": "lane_stop", "message": "5 batch lỗi liên tiếp"}
+{"run_id": "R1-20261103-090900", "t": 1793697260.474331, "lane": "s2", "kind": "lane_stop", "message": "Semantic Scholar quota exhausted"}
