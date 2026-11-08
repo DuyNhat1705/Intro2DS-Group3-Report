@@ -40,6 +40,52 @@ def hardware_41(data_dir=None):
     return pd.DataFrame(rows).sort_values(['worker', 'start_UTC']).reset_index(drop=True)
 
 
+PIPELINE_SETTINGS = [
+    ('ARXIV_DELAY', 'arXiv base delay between request starts', 'seconds'),
+    ('ARXIV_MAX_DELAY', 'arXiv maximum delay after 429 / 5xx', 'seconds'),
+    ('METADATA_BATCH_SIZE', 'Metadata batch size', 'IDs per request'),
+    ('S2_BATCH_SIZE', 'Semantic Scholar batch size', 'IDs per request'),
+    ('S2_DELAY_WITH_KEY', 'Semantic Scholar delay with API key', 'seconds'),
+    ('PARALLEL', 'arXiv and Semantic Scholar run in parallel', ''),
+    ('KEEP_ARCHIVE', 'Keep source archives on disk', ''),
+    ('MAX_RUN_HOURS', 'Time limit per session', 'hours'),
+]
+
+
+def pipeline_config_41(data_dir=None):
+    """Settings logged at session start; more than one value means the setting changed."""
+    hardware = hardware_41(data_dir)
+    rows = []
+    for key, setting, unit in PIPELINE_SETTINGS:
+        values = hardware[key].dropna().astype(str).unique()
+        rows.append({'Setting': setting, 'Value': ', '.join(sorted(values)), 'Unit': unit})
+    return pd.DataFrame(rows)
+
+
+def _has_samples(path):
+    return path.exists() and path.stat().st_size > 0 and not pd.read_csv(path, nrows=1).empty
+
+
+def measurement_coverage_41(data_dir=None):
+    """Sessions with usable data per measurement; missing values are not estimated."""
+    runs = data.runs(data_dir)
+    logs = data.root(data_dir)/'run_logs'
+
+    def sampled(prefix):
+        return sum(_has_samples(logs/run.worker/f'{prefix}_{run.run_id}.csv') for run in runs.itertuples())
+
+    timings = data.records('timings.jsonl', data_dir)
+    counts = {
+        'Session duration': runs.wall_sec.gt(0).sum(),
+        'Stage timings': timings.groupby(['worker', 'run_id']).ngroups,
+        'RSS samples': sampled('monitor'),
+        'data/ size scans': sampled('disk'),
+        'Kernel peak RSS': runs.peak_rss_kernel_bytes.notna().sum(),
+    }
+    return pd.DataFrame({'Measurement': list(counts),
+                         f'Sessions with data (of {len(runs)})': [int(count) for count in counts.values()]})
+
+
 def session_timeline_41(data_dir=None):
     runs = data.runs(data_dir)
     fig, ax = data.figure('Recorded worker sessions (UTC; gaps are downtime)', figsize=(13, 5))
@@ -171,7 +217,7 @@ def summary_table_44(data_dir=None):
     add('Calendar elapsed', calendar/3600, 'hours', 'First start to latest end; includes gaps', 'runs.csv')
     valid_wall = runs.wall_sec.where(runs.wall_sec.ge(0))
     worker_hours = valid_wall.sum(min_count=1)/3600
-    add('Worker time', worker_hours, 'worker-hours', f'{valid_wall.notna().sum()} valid session durations; includes same-worker overlaps reported below', 'runs.csv')
+    add('Worker time', worker_hours, 'worker-hours', f'{valid_wall.gt(0).sum()} valid session durations; includes same-worker overlaps reported below', 'runs.csv')
     add('Collection throughput', success/(active/3600), 'papers/hour', 'Final successes / active collection elapsed', 'per_paper.csv + runs.csv')
     add('Worker efficiency', success/worker_hours, 'papers/worker-hour', 'Final successes / worker-hours', 'per_paper.csv + runs.csv')
     for worker, group in runs.groupby('worker'):
@@ -195,9 +241,15 @@ def summary_table_44(data_dir=None):
         add('Sampled peak directory size', disk.loc[disk.worker.eq(worker), 'data_dir_bytes'].max()/data.GIB,
             'GiB', f'{worker} data/ scans; not guaranteed true peak', 'disk.csv')
     for worker, summary in data.summaries(data_dir).items():
-        for key in ['output_size_bytes', 'tables_size_bytes']:
-            add(key, summary.get('performance', {}).get(key, np.nan)/data.GIB, 'GiB',
-                f'{worker} export snapshot {summary.get("generated_at")}; scopes may overlap', 'summary_stats.json')
+        for key, label in [('output_size_bytes', 'Final output size'), ('tables_size_bytes', 'Exported tables size')]:
+            add(label, summary.get('performance', {}).get(key, np.nan)/data.GIB, 'GiB',
+                f'{worker} export snapshot {summary.get("generated_at")}', 'summary_stats.json')
+    add('Entry discovery total', papers.time_metadata_sec.sum(min_count=1), 'seconds',
+        'Same value as Metadata attributed work; batched requests split evenly', 'per_paper.csv')
+    outputs = [s.get('performance', {}).get('output_size_bytes', np.nan)
+               for s in data.summaries(data_dir).values()]
+    add('Final output size (all ranges)', sum(outputs)/data.GIB, 'GiB',
+        'Sum of the 5 range snapshots above; paper folders only', 'summary_stats.json')
     paired, excluded = data.paired_sizes(data_dir)
     before, after = paired.size_full_bytes.sum(), paired.size_tex_bib_bytes.sum()
     for label, value in [('Extracted source', before/data.GIB), ('Retained TeX/Bib', after/data.GIB)]:
@@ -217,7 +269,8 @@ def summary_table_44(data_dir=None):
 def source_waiting_45(data_dir=None):
     """Use sleep and elapsed from the SAME state stats record, across its retries.
 
-    The remainder includes transfer, processing and IO; it is not CPU time.
+    The remainder is mainly network transfer. Extraction and writing run on the
+    background writer thread, so they are mostly outside these timers.
     Exported source attribution is intentionally not mixed into this subtraction.
     """
     rows, excluded = [], 0
@@ -233,7 +286,7 @@ def source_waiting_45(data_dir=None):
     times = pd.DataFrame(rows).groupby('worker')[['Recorded sleep', 'Other source time']].sum()/3600
     fig, ax = data.figure(f'Matching cumulative source-state timers ({len(rows):,} papers; {excluded} excluded)', 'State-attributed hours')
     times.reindex(data.WORKERS).plot.bar(stacked=True, ax=ax, rot=0)
-    ax.set_xlabel('Other source time includes network, processing and IO; not isolated CPU time')
+    ax.set_xlabel('Other source time is mainly network transfer; extraction and writing run on a background thread')
     return fig
 
 

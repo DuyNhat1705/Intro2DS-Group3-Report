@@ -90,11 +90,39 @@ def event_counts(data_dir=None):
     events = records('events.jsonl', data_dir)
     return pd.crosstab(events.worker, events.kind).reindex(WORKERS, fill_value=0)
 
+def _last_sample_time(path):
+    """Latest `t` in a monitor/disk CSV; NaN if the file is missing or empty."""
+    if not path.exists() or path.stat().st_size == 0:
+        return np.nan
+    return pd.read_csv(path, usecols=['t']).t.max()
+
+def _repair_killed_sessions(frame, data_dir=None):
+    """Killed sessions have no end record: use the latest log of any kind.
+
+    runs.csv takes `end` from the last monitor sample only, so a killed session
+    without a monitor file gets end == start. The result is a lower bound.
+    """
+    killed = frame.stop_reason.astype(str).str.startswith('killed')
+    timings = records('timings.jsonl', data_dir)
+    last_timing = pd.to_numeric(timings.end, errors='coerce').groupby(
+        [timings.worker, timings.run_id]).max()
+    frame = frame.copy()
+    for index in frame.index[killed]:
+        worker, run_id = frame.at[index, 'worker'], frame.at[index, 'run_id']
+        logs = root(data_dir)/'run_logs'/worker
+        end = np.nanmax([frame.at[index, 'end'],
+                         _last_sample_time(logs/f'monitor_{run_id}.csv'),
+                         _last_sample_time(logs/f'disk_{run_id}.csv'),
+                         last_timing.get((worker, run_id), np.nan)])
+        frame.at[index, 'end'] = end
+        frame.at[index, 'wall_sec'] = end-frame.at[index, 'start']
+    return frame
+
 def runs(data_dir=None):
     frame = exports('runs.csv', data_dir)
     if frame.duplicated(['worker', 'run_id']).any():
         raise ValueError('Duplicate (worker, run_id) sessions')
-    return frame
+    return _repair_killed_sessions(frame, data_dir)
 
 def elapsed(frame):
     """Union of session intervals and calendar span, in seconds."""
