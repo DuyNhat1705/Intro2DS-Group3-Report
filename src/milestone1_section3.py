@@ -93,6 +93,32 @@ def paper_reduction_32(data_dir=None):
     return fig
 
 
+def size_concentration_32(data_dir=None):
+    """Show storage concentration and the empirical distribution of savings."""
+    papers, excluded = data.paired_sizes(data_dir)
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), layout='constrained')
+    for column, label in [('size_full_bytes', 'Extracted'), ('size_tex_bib_bytes', 'Retained TeX/Bib')]:
+        values = papers[column].sort_values(ascending=False).to_numpy()
+        x = np.arange(1, len(values)+1)/len(values)*100
+        y = np.cumsum(values)/values.sum()*100
+        axes[0].plot(np.r_[0, x], np.r_[0, y], label=label)
+    axes[0].plot([0, 100], [0, 100], '--', color='grey', label='Equal size per paper')
+    axes[0].set(xlabel='Largest papers by each respective size measure (%)',
+                ylabel='Cumulative share of bytes (%)', xlim=(0, 100), ylim=(0, 100),
+                title='How concentrated is storage?')
+    axes[0].legend()
+    reduction = papers.reduction_pct.sort_values().to_numpy()
+    axes[1].step(reduction, np.arange(1, len(reduction)+1)/len(reduction)*100, where='post')
+    for threshold in [50, 90, 95]:
+        share = papers.reduction_pct.ge(threshold).mean()*100
+        axes[1].axvline(threshold, linestyle=':', alpha=.6, label=f'{share:.1f}% save at least {threshold}%')
+    axes[1].set(xlabel='Per-paper reduction (%)', ylabel='Papers with reduction at or below x (%)',
+                xlim=(0, 100), ylim=(0, 100), title='Distribution of filtering savings (ECDF)')
+    axes[1].legend(loc='upper left', fontsize=8)
+    fig.suptitle(f'{len(papers):,} valid size pairs; {excluded:,} excluded; size rankings are independent')
+    return fig
+
+
 def reference_count_33(data_dir=None):
     papers = data.papers(data_dir)
     selected = papers.loc[papers.refs.eq('ok') & papers.n_refs.notna()]
@@ -113,8 +139,41 @@ def lookup_outcome_33(data_dir=None):
     fig, ax = data.figure('Final reference lookup outcomes by range', 'Requested papers (%)')
     (counts.div(counts.sum(axis=1), axis=0)*100).plot.bar(stacked=True, ax=ax, rot=0)
     for container, column in zip(ax.containers, counts.columns):
-        ax.bar_label(container, labels=[f'{n:,}\n{100*n/total:.2f}%' if n else '' for n, total in zip(counts[column], counts.sum(axis=1))], label_type='center', fontsize=8)
+        ax.bar_label(container, labels=[f'{n:,}\n{100*n/total:.2f}%' if n/total >= .01 else '' for n, total in zip(counts[column], counts.sum(axis=1))], label_type='center', fontsize=8)
+    if 'not_found' in counts:
+        for i, n in enumerate(counts.not_found):
+            ax.text(i, 102, f'not_found: {n}', ha='center', fontsize=8)
     ax.set_ylim(0, 110)
+    ax.set_xlabel('Range')
+    ax.legend(title='Outcome', loc='upper left', bbox_to_anchor=(1.01, 1))
+    return fig
+
+
+def reference_profiles_33(data_dir=None):
+    """Separate nonempty lookup rates, reference yield, and arXiv link coverage."""
+    papers = data.papers(data_dir)
+    groups = papers.groupby('worker')
+    rate = groups.refs.agg(lambda values: values.eq('ok').mean()*100).reindex(data.WORKERS)
+    mean_ok = papers.loc[papers.refs.eq('ok')].groupby('worker').n_refs.mean().reindex(data.WORKERS)
+    returned_per_target = (groups.n_refs.sum()/groups.size()).reindex(data.WORKERS)
+    coverage = (groups.n_refs_arxiv.sum()/groups.n_refs.sum()*100).reindex(data.WORKERS)
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5), layout='constrained')
+    colors = ['#427aab']*4+['#d68a32']
+    axes[0].bar(data.WORKERS, rate, color=colors)
+    axes[0].set(title='Nonempty reference lookups', ylabel='ok / 5,000 target IDs (%)', ylim=(0, 105))
+    axes[0].bar_label(axes[0].containers[0], fmt='%.2f%%', padding=3)
+    x = np.arange(len(data.WORKERS))
+    axes[1].bar(x-.19, mean_ok, .38, label='Mean among ok lookups')
+    axes[1].bar(x+.19, returned_per_target, .38, label='Returned references / target ID')
+    axes[1].set(xticks=x, xticklabels=data.WORKERS, title='Conditional mean versus realized yield', ylabel='References per paper or target ID')
+    axes[1].legend(fontsize=8)
+    axes[1].margins(y=.22)
+    for container in axes[1].containers:
+        axes[1].bar_label(container, fmt='%.1f', padding=3, fontsize=8)
+    axes[2].bar(data.WORKERS, coverage, color=colors)
+    axes[2].set(title='arXiv-linked reference coverage', ylabel='Linked / all returned references (%)', ylim=(0, 105))
+    axes[2].bar_label(axes[2].containers[0], fmt='%.2f%%', padding=3)
+    fig.suptitle('Different denominators reveal different aspects of reference collection')
     return fig
 
 
@@ -171,13 +230,42 @@ def primary_category_34(data_dir=None, top_n=15):
         shown.loc['Other'] = counts.iloc[top_n:].sum()
     fig, axes = plt.subplots(1, 2, figsize=(15, 7), layout='constrained')
     shown.sort_values().plot.barh(ax=axes[0], title='Primary categories (first category only)', xlabel='Papers')
+    axes[0].bar_label(axes[0].containers[0], labels=[f'{n:,} ({n/counts.sum():.1%})' for n in shown.sort_values()], padding=3, fontsize=8)
+    axes[0].margins(x=.28)
     table = categories.pivot_table(index='primary_category', columns='worker', values='n_papers', aggfunc='sum', fill_value=0)
     table = table.reindex(index=counts.head(top_n).index, columns=data.WORKERS, fill_value=0)
-    image = axes[1].imshow(table, aspect='auto', cmap='Blues')
+    percentages = table.div(categories.groupby('worker').n_papers.sum(), axis=1)*100
+    image = axes[1].imshow(percentages, aspect='auto', cmap='Blues', vmin=0)
     axes[1].set_xticks(range(len(table.columns)), table.columns)
     axes[1].set_yticks(range(len(table)), table.index)
-    axes[1].set_title('Top primary categories by range')
-    fig.colorbar(image, ax=axes[1], label='Papers')
+    axes[1].set_title('Category share of all papers in each range')
+    for row in range(len(table)):
+        for col in range(len(table.columns)):
+            value = percentages.iloc[row, col]
+            axes[1].text(col, row, f'{value:.1f}%', ha='center', va='center', fontsize=8,
+                         color='white' if value > percentages.to_numpy().max()*.55 else 'black')
+    fig.colorbar(image, ax=axes[1], label='Papers in range (%)')
+    return fig
+
+
+def version_storage_profile_34(data_dir=None):
+    """Compare paper/version shares with storage shares on valid pairs only."""
+    papers = data.papers(data_dir)
+    paired, _ = data.paired_sizes(data_dir)
+    multi = papers.num_versions.gt(1)
+    paired_multi = paired.num_versions.gt(1)
+    shares = np.array([multi.mean(), papers.loc[multi, 'num_versions'].sum()/papers.num_versions.sum(),
+                       paired.loc[paired_multi, 'size_full_bytes'].sum()/paired.size_full_bytes.sum(),
+                       paired.loc[paired_multi, 'size_tex_bib_bytes'].sum()/paired.size_tex_bib_bytes.sum()])*100
+    fig, ax = data.figure('Revision multiplicity and storage contribution', 'Share within each population (%)', figsize=(11, 5))
+    labels = ['Target papers', 'Metadata versions', 'Extracted bytes', 'Retained bytes']
+    ax.bar(labels, 100-shares, label='Single-version papers', color='#427aab')
+    ax.bar(labels, shares, bottom=100-shares, label='Multi-version papers', color='#d68a32')
+    for container in ax.containers:
+        ax.bar_label(container, labels=[f'{v:.2f}%' for v in container.datavalues], label_type='center')
+    ax.set_ylim(0, 112)
+    ax.legend(loc='upper center', bbox_to_anchor=(.5, 1.02), ncol=2, fontsize=9)
+    ax.set_xlabel(f'Counts: {len(papers):,} targets, {papers.num_versions.sum():,} expected versions; storage: {len(paired):,} valid size pairs')
     return fig
 
 
@@ -207,7 +295,12 @@ def revision_history_34(data_dir=None):
     revised = pd.to_datetime(papers.revised_dates.map(latest), errors='coerce', utc=True)
     lag = (revised-submitted).dt.total_seconds()/86400
     valid = lag.notna() & lag.ge(0)
-    fig, ax = data.figure(f'Initial submission to latest revision ({valid.sum():,} valid papers)', 'Papers')
-    ax.hist(lag[valid], bins=50, edgecolor='white')
-    ax.set_xlabel(f'Days; {(~valid).sum():,} absent/invalid/negative intervals excluded')
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), layout='constrained')
+    axes[0].hist(lag[valid], bins=50, edgecolor='white')
+    axes[0].axvline(lag[valid].median(), color='black', linestyle='--', label=f'Median: {lag[valid].median():g} days')
+    axes[0].set(xlabel='Days from initial submission to latest observed revision', ylabel='Papers', title='Observed revision intervals')
+    axes[0].legend()
+    axes[1].boxplot([lag[valid & papers.worker.eq(w)] for w in data.WORKERS], tick_labels=data.WORKERS, showfliers=True)
+    axes[1].set(ylabel='Days', title='Revision intervals by range')
+    fig.suptitle(f'{valid.sum():,} valid revised papers; {(~valid).sum():,} absent/invalid intervals excluded; unequal observation windows')
     return fig
