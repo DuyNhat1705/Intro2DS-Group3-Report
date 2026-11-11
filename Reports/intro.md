@@ -1,10 +1,10 @@
 # Introduction to Data Science - arXiv Project
 
-## Milestone 1: Automated Multi-Version arXiv Data Harvesting & Performance Auditing
-
 Welcome to the official documentation and report portal for **Group 03** in **CSC14119 - Introduction to Data Science** (University of Science, VNU-HCM).
 
-This project focuses on designing, implementing, and benchmarking a high-throughput, fault-tolerant data collection pipeline that ingests multi-version scientific preprint source archives from **arXiv** and enriches them with citation graphs and reference metadata via **Semantic Scholar**.
+This project follows scientific papers from **arXiv source collection** to **hierarchical parsing and standardization**, preparing a structured corpus for reference matching in Milestone 3. This book brings together our methods, data statistics, and performance evaluations across milestones.
+
+Milestone 1 documents data crawling and reference metadata collection from **Semantic Scholar**. Milestone 2 currently provides the report outline for parsing LaTeX, normalizing content, and deduplicating elements and references across versions.
 
 ---
 
@@ -22,62 +22,56 @@ This project focuses on designing, implementing, and benchmarking a high-through
 
 ## Project Objectives & Scope
 
-The primary objective of Milestone 1 is to build an automated, auditable, and resilient data engineering pipeline capable of collecting, curating, and evaluating a dataset of scientific research papers:
-
-1. **Multi-Version Source Ingestion**: Efficiently harvest all revisions ($v_1, v_2, \dots, v_n$) of papers across target categories from arXiv while strictly respecting API rate limits and polite scraping protocols.
-2. **Source Extraction & Figure Stripping**: Decompress and isolate primary LaTeX source files (`.tex`, `.bib`), automatically discarding heavy compiled binaries and visual figure assets (`.png`, `.jpg`, `.pdf`, `.eps`) to optimize disk footprint.
-3. **Citation & Reference Harvesting**: Query the Semantic Scholar Academic Graph API to enrich each paper with structured citation metadata and reference linkings.
-4. **Resilience & State Management**: Maintain atomic state logging, robust error classification (`NETWORK_TIMEOUT`, `RATE_LIMIT_EXCEEDED`, `CORRUPT_ARCHIVE`, etc.), and resumability across network disruptions or Colab runtime resets.
-5. **Cloud Performance Auditing**: Conduct benchmark evaluations measuring running times, memory usage (RAM footprint), storage compression ratios, and network bandwidth on a CPU-only Google Colab testbed.
+1. **Collect every version:** Discover publications in the assigned arXiv ID ranges, retrieve each available source version, and retain empty records for versions without TeX sources.
+2. **Prepare the source corpus:** Preserve `.tex` and `.bib` files and their relative paths, and collect reference metadata from Semantic Scholar.
+3. **Build document hierarchies:** Follow the LaTeX compilation path and organize content into sections, sentences, block formulas, and figures, including tables.
+4. **Standardize and deduplicate:** Clean formatting, normalize mathematics, unify bibliography entries and citation keys, and share identical cleaned elements across versions of a publication.
+5. **Evaluate quality and performance:** Report coverage, failures, element and reference counts, running time, memory use, and storage. Generate results tables and figures during book compilation.
 
 ---
 
 ## Pipeline Architecture
 
-The pipeline processes each paper through a structured 4-phase lifecycle:
+The milestones build on one another:
 
 ```
-[arXiv API / OAI-PMH]
+Milestone 1 · Data Crawling
+  Assigned arXiv IDs → metadata and all source versions
+  → retained .tex/.bib files and Semantic Scholar reference metadata
          │
          ▼
-  Phase A: Paper Discovery & Metadata Ingestion
+Milestone 2 · Hierarchical Parsing and Standardization
+  Compilation-path gathering → hierarchy construction → normalization
+  → cross-version deduplication → elements, hierarchy, and bibtex tables
          │
          ▼
-  Phase B: Multi-Version Source Download (export.arxiv.org)
-         │  └─► Decompression & Automated Figure Removal (.tex, .bib retained)
-         ▼
-  Phase C: Citation & Reference Scraping (Semantic Scholar API)
-         │  └─► Bibliographic metadata enrichment & cross-referencing
-         ▼
-  Phase D: Telemetry Logging & State Persistence (JSONL / state.json)
-```
-
-Each successfully processed paper is organized into a standardized directory layout:
-
-```
-data/
-└── <arxiv_id>/
-    ├── metadata.json                 # Paper metadata (title, authors, categories, versions, abstract)
-    ├── references.json               # Extracted references and Semantic Scholar metadata
-    ├── v1/                           # Version 1 LaTeX source (.tex, .bib)
-    ├── v2/                           # Version 2 LaTeX source
-    └── vn/                           # Version n LaTeX source (latest version)
+Milestone 3 · Reference Matching (next stage)
+  Consume the structured corpus and unified references
 ```
 
 ---
 
 ## Report Organization
 
-The comprehensive technical findings, statistical evaluations, and dynamic visualizations are detailed in the main report notebook:
+Choose a milestone to explore its methods and analysis.
 
-### Milestone 1: Data Crawling
-- **[Section 1: Overview & Scope](Report.ipynb#1-overview)**: Pipeline design principles, schema specifications, and target repository goals.
-- **[Section 2: Implementation & Robustness](Report.ipynb#2-implementation)**: Deep dive into API interaction, retry logic with exponential backoff, rate limit enforcement, and software tooling.
-- **[Section 3: Data Statistics](Report.ipynb#3-data-statistics)**: Scraping success rates, failure breakdowns, file size reduction via figure stripping, version distributions, and primary categories.
-- **[Section 4: Performance Evaluation](Report.ipynb#4-performance-evaluation)**: System resource monitoring (CPU, RAM, Disk I/O), timing breakdowns across pipeline phases, and bottleneck analyses.
-- **[Section 5: Conclusion & Future Work](Report.ipynb#5-conclusion)**: Key takeaways, real-world engineering challenges, and roadmap for Milestone 2.
+::::{grid} 1 1 2 2
 
-### Milestone 2: Data Parsing
----
+:::{card} [Milestone 1: Data Crawling](Report1.ipynb)
+**Automated Multi-Version arXiv Data Collection**
 
-👉 **Ready to explore the data and analyses?** Proceed directly to the **[Report](Report.ipynb)**.
+Collect publication metadata, all available source versions, and reference metadata from arXiv and Semantic Scholar. Analyze collection coverage, data statistics, running time, memory use, and storage.
+:::
+
+:::{card} [Milestone 2: Data Parsing and Standardization](Report2.ipynb)
+**Hierarchical LaTeX Parsing and Cross-Version Deduplication**
+
+Outline the transformation of LaTeX sources into document hierarchies, normalized content, and unified references. Plan coverage statistics, deduplication analysis, and parser performance evaluation. **Report outline.**
+:::
+
+::::
+
+## Project Repositories
+
+- [Report repository](https://github.com/DuyNhat1705/Intro2DS-Group3-Report): Jupyter Book pages, report notebooks, and reporting code.
+- [Source-code repository](https://github.com/DuyNhat1705/Intro2DS-Group3-Source): Pipeline implementation and execution instructions.

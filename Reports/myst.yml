@@ -8,7 +8,8 @@ project:
     '\R': '\mathbb{R}'
   toc:
     - file: intro.md
-    - file: Report.ipynb
+    - file: Report1.ipynb
+    - file: Report2.ipynb
 site:
   template: book-theme
   title: arXiv Project

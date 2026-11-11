@@ -52,12 +52,36 @@ def retry_errors_31(data_dir=None):
 
 
 def version_outcome_31(data_dir=None):
-    columns = ['n_versions_done', 'n_versions_no_tex', 'n_versions_not_found']
-    counts = data.papers(data_dir).groupby('worker')[columns].sum()
-    counts.columns = ['Completed', 'No TeX', 'Not found']
-    fig, ax = data.figure('Recorded version outcomes (versions, not papers)', 'Versions')
+    columns = ["n_versions_done", "n_versions_no_tex", "n_versions_not_found"]
+    counts = data.papers(data_dir).groupby("worker")[columns].sum()
+    counts.columns = ["Completed", "No TeX", "Not found"]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
     counts.plot.bar(stacked=True, ax=ax, rot=0)
-    data.annotate(ax)
+    ax.set_title("Recorded version outcomes (versions, not papers)")
+    ax.set_ylabel("Versions")
+    ax.set_xlabel("")
+
+    ax.bar_label(
+        ax.containers[0],
+        labels=[
+            f"{value:,.0f}" if value else ""
+            for value in counts["Completed"]
+        ],
+        label_type="center",
+        color="white",
+        fontsize=9,
+    )
+
+    tick_labels = [
+        f"{worker}\nNo TeX: {no_tex:,.0f}\nNot found: {not_found:,.0f}"
+        for worker, no_tex, not_found in zip(
+            counts.index, counts["No TeX"], counts["Not found"]
+        )
+    ]
+    ax.set_xticklabels(tick_labels, rotation=0, fontsize=9)
+
+    fig.tight_layout()
     return fig
 
 
@@ -136,8 +160,26 @@ def reference_count_33(data_dir=None):
 def lookup_outcome_33(data_dir=None):
     papers = data.papers(data_dir)
     counts = pd.crosstab(papers.worker, papers.refs.fillna('missing')).reindex(data.WORKERS, fill_value=0)
-    fig, ax = data.figure('Final reference lookup outcomes by range', 'Requested papers (%)')
-    (counts.div(counts.sum(axis=1), axis=0)*100).plot.bar(stacked=True, ax=ax, rot=0)
+    if "not_found" in counts.columns:
+        not_found = counts.pop("not_found")
+        counts["not_found"] = not_found
+
+    colors = {
+        "no_refs": "tab:blue",
+        "ok": "tab:green",
+        "not_found": "tab:orange",
+    }
+
+    fig, ax = data.figure(
+        "Final reference lookup outcomes by range", "Requested papers (%)"
+    )
+    percentages = counts.div(counts.sum(axis=1), axis=0) * 100
+    percentages.plot.bar(
+        stacked=True,
+        ax=ax,
+        rot=0,
+        color=[colors.get(column, "tab:gray") for column in counts.columns],
+    )
     for container, column in zip(ax.containers, counts.columns):
         ax.bar_label(container, labels=[f'{n:,}\n{100*n/total:.2f}%' if n/total >= .01 else '' for n, total in zip(counts[column], counts.sum(axis=1))], label_type='center', fontsize=8)
     if 'not_found' in counts:
