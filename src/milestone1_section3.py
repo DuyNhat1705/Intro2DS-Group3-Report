@@ -58,53 +58,74 @@ def version_outcome_31(data_dir=None):
 
     fig, ax = plt.subplots(figsize=(10, 5))
     counts.plot.bar(stacked=True, ax=ax, rot=0)
-    ax.set_title("Recorded version outcomes (versions, not papers)")
+    ax.set_title("Recorded version outcomes")
     ax.set_ylabel("Versions")
     ax.set_xlabel("")
-
-    ax.bar_label(
-        ax.containers[0],
-        labels=[
-            f"{value:,.0f}" if value else ""
-            for value in counts["Completed"]
-        ],
-        label_type="center",
-        color="white",
-        fontsize=9,
-    )
-
-    tick_labels = [
-        f"{worker}\nNo TeX: {no_tex:,.0f}\nNot found: {not_found:,.0f}"
-        for worker, no_tex, not_found in zip(
-            counts.index, counts["No TeX"], counts["Not found"]
-        )
-    ]
-    ax.set_xticklabels(tick_labels, rotation=0, fontsize=9)
-
     fig.tight_layout()
     return fig
 
 
 def extracted_retained_size_32(data_dir=None):
-    """Valid paired totals, positive-size boxplots, and log-scale paired scatter."""
+    """Compare total sizes and extracted/retained size distributions."""
     papers, excluded = data.paired_sizes(data_dir)
-    before, after = papers.size_full_bytes, papers.size_tex_bib_bytes
-    fig, axes = plt.subplots(1, 3, figsize=(17, 5), layout='constrained')
-    totals = np.array([before.sum(), after.sum()])/data.GIB
-    axes[0].bar(['Extracted', 'Retained TeX/Bib'], totals)
-    axes[0].bar_label(axes[0].containers[0], fmt='%.3f GiB')
-    axes[0].set(title=f'Corpus reduction: {100*(1-totals[1]/totals[0]):.2f}%', ylabel='GiB (file-content bytes)')
-    axes[1].boxplot([before/data.MIB, after[after.gt(0)]/data.MIB], tick_labels=['Extracted', 'Retained'], showfliers=False)
-    axes[1].set(yscale='log', ylabel='MiB (log; outliers hidden)', title=f'{after.eq(0).sum():,} retained zeros excluded')
-    positive = after.gt(0)
-    axes[2].scatter(before[positive]/data.MIB, after[positive]/data.MIB, s=5, alpha=.25)
-    if positive.any():
-        lo, hi = min(before[positive].min(), after[positive].min())/data.MIB, max(before[positive].max(), after[positive].max())/data.MIB
-        axes[2].plot([lo, hi], [lo, hi], 'k--', label='Equal size')
-        axes[2].legend()
-    axes[2].set(xscale='log', yscale='log', xlabel='Extracted MiB', ylabel='Retained MiB')
-    fig.suptitle(f'Source filtering: {len(papers):,} pairs; {excluded:,} invalid/missing/zero-before excluded')
-    return fig
+
+    if papers.empty:
+        raise ValueError("No valid size pairs to plot.")
+
+    before = papers.size_full_bytes
+    after = papers.size_tex_bib_bytes
+
+    fig, axes = plt.subplots(
+        1, 2, figsize=(14, 5), layout="constrained"
+    )
+
+    # Biểu đồ 1: Tổng dung lượng
+    totals = np.array([before.sum(), after.sum()]) / data.GIB
+    bars = axes[0].bar(["Extracted", "Retained TeX/Bib"], totals)
+
+    axes[0].bar_label(bars, fmt="%.3f GiB")
+    axes[0].set(
+        title=f"Corpus reduction: {100 * (1 - totals[1] / totals[0]):.2f}%",
+        ylabel="GiB (file-content bytes)",
+    )
+
+    # Biểu đồ 2: Histogram chồng, dùng chung các khoảng dung lượng
+    after_positive = after[after.gt(0)]
+    values = np.concatenate([
+        before.to_numpy(),
+        after_positive.to_numpy(),
+    ])
+
+    lo, hi = values.min(), values.max()
+    if lo == hi:
+        lo, hi = lo / 10, hi * 10
+
+    bins = np.geomspace(lo, hi, 35)
+
+    axes[1].hist(
+        before,
+        bins=bins,
+        alpha=0.6,
+        color="#F28E2B",
+        label="Extracted",
+    )
+    axes[1].hist(
+        after_positive,
+        bins=bins,
+        alpha=0.6,
+        color="#4E79A7",
+        label="Retained TeX/Bib",
+    )
+
+    axes[1].set(
+        xscale="log",
+        xlabel="Paper size (bytes)",
+        ylabel="Papers",
+        title="Paper size before and after source filtering",
+    )
+    axes[1].legend()
+    axes[1].grid(alpha=0.3)
+    axes[1].set_axisbelow(True)
 
 
 def paper_reduction_32(data_dir=None):
@@ -254,10 +275,10 @@ def num_version_34(data_dir=None):
     papers = data.papers(data_dir)
     values = papers.loc[papers.metadata.eq('done'), 'num_versions'].dropna()
     counts = values.value_counts().sort_index()
-    fig, ax = data.figure('Versions per metadata-found paper', 'Papers')
+    fig, ax = data.figure('Versions per paper', 'Papers')
     ax.bar(counts.index, counts)
     ax.set_xticks(counts.index)
-    ax.set_xlabel(f'Versions; median={values.median():g}, p95={values.quantile(.95):g}, >1={(values>1).mean():.2%}')
+    ax.set_xlabel(f'Versions')
     data.annotate(ax)
     return fig
 
@@ -291,23 +312,54 @@ def primary_category_34(data_dir=None, top_n=15):
 
 
 def version_storage_profile_34(data_dir=None):
-    """Compare paper/version shares with storage shares on valid pairs only."""
-    papers = data.papers(data_dir)
+    """Compare storage shares on valid size pairs only."""
     paired, _ = data.paired_sizes(data_dir)
-    multi = papers.num_versions.gt(1)
-    paired_multi = paired.num_versions.gt(1)
-    shares = np.array([multi.mean(), papers.loc[multi, 'num_versions'].sum()/papers.num_versions.sum(),
-                       paired.loc[paired_multi, 'size_full_bytes'].sum()/paired.size_full_bytes.sum(),
-                       paired.loc[paired_multi, 'size_tex_bib_bytes'].sum()/paired.size_tex_bib_bytes.sum()])*100
-    fig, ax = data.figure('Revision multiplicity and storage contribution', 'Share within each population (%)', figsize=(11, 5))
-    labels = ['Target papers', 'Metadata versions', 'Extracted bytes', 'Retained bytes']
-    ax.bar(labels, 100-shares, label='Single-version papers', color='#427aab')
-    ax.bar(labels, shares, bottom=100-shares, label='Multi-version papers', color='#d68a32')
+    multi = paired.num_versions.gt(1)
+
+    shares = np.array([
+        paired.loc[multi, "size_full_bytes"].sum()
+        / paired.size_full_bytes.sum(),
+
+        paired.loc[multi, "size_tex_bib_bytes"].sum()
+        / paired.size_tex_bib_bytes.sum(),
+    ]) * 100
+
+    fig, ax = data.figure(
+        "Revision multiplicity and storage contribution",
+        "Share within each population (%)",
+        figsize=(8, 5),
+    )
+
+    labels = ["Extracted bytes", "Retained bytes"]
+
+    ax.bar(
+        labels, 100 - shares,
+        label="Single-version papers",
+        color="#427aab",
+    )
+    ax.bar(
+        labels, shares,
+        bottom=100 - shares,
+        label="Multi-version papers",
+        color="#d68a32",
+    )
+
     for container in ax.containers:
-        ax.bar_label(container, labels=[f'{v:.2f}%' for v in container.datavalues], label_type='center')
+        ax.bar_label(
+            container,
+            labels=[f"{v:.2f}%" for v in container.datavalues],
+            label_type="center",
+        )
+
     ax.set_ylim(0, 112)
-    ax.legend(loc='upper center', bbox_to_anchor=(.5, 1.02), ncol=2, fontsize=9)
-    ax.set_xlabel(f'Counts: {len(papers):,} targets, {papers.num_versions.sum():,} expected versions; storage: {len(paired):,} valid size pairs')
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(.5, 1.02),
+        ncol=2,
+        fontsize=9,
+    )
+    ax.set_xlabel(f"Storage: {len(paired):,} valid size pairs")
+
     return fig
 
 

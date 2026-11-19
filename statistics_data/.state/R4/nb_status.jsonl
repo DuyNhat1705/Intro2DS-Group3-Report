@@ -10171,3 +10171,4 @@
 {"run_id": "R4-20261101-081448", "stage": "source", "arxiv_id": "2608.07199", "status": "done", "t": 1793521158.214468, "num_versions": 1}
 {"run_id": "R4-20261101-081448", "stage": "source", "arxiv_id": "2608.07632", "status": "done", "t": 1793521318.5163622, "num_versions": 3}
 {"run_id": "R4-20261101-081448", "stage": "source", "arxiv_id": "2608.08374", "status": "failed", "t": 1793521521.0086496, "error": "DownloadError('Giving up on https://export.arxiv.org/src/2608.08374v3 (last status: None)')"}
+{"run_id": "R4-20261116-142508", "stage": "source", "arxiv_id": "2608.08374", "status": "done", "t": 1794839147.3204262, "num_versions": 3}

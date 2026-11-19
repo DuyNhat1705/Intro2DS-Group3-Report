@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T08:26:45",
+  "generated_at": "2026-11-16T15:02:18",
   "config": {
     "RUN_RANGES": [
       4
@@ -38,18 +38,18 @@
     "n_ids": 5000,
     "n_papers_found": 5000,
     "n_metadata_not_found": 0,
-    "n_papers_success": 4999,
-    "success_rate_over_ids": 0.9998,
-    "success_rate_over_found": 0.9998,
+    "n_papers_success": 5000,
+    "success_rate_over_ids": 1.0,
+    "success_rate_over_found": 1.0,
     "n_versions_total": 6150,
-    "n_versions_done": 5822,
+    "n_versions_done": 5823,
     "n_versions_no_tex": 303,
     "n_versions_not_found": 24,
-    "n_papers_with_tex": 4726,
-    "avg_archive_bytes": 3974827.479263648,
-    "avg_size_before_bytes": 4708543.022640711,
-    "avg_size_after_bytes": 183915.63732543378,
-    "size_reduction_ratio": 0.9609400112856381,
+    "n_papers_with_tex": 4727,
+    "avg_archive_bytes": 4000814.34609689,
+    "avg_size_before_bytes": 4734707.550454834,
+    "avg_size_after_bytes": 184072.3259995769,
+    "size_reduction_ratio": 0.9611227675546943,
     "n_refs_asked": 5000,
     "refs_status_counts": {
       "ok": 4571,
@@ -65,18 +65,18 @@
   },
   "performance": {
     "n_workers": 1,
-    "n_sessions": 5,
-    "wall_time_sec": 45537.76300287247,
-    "machine_time_sec": 45537.76300287247,
+    "n_sessions": 6,
+    "wall_time_sec": 47513.5704498291,
+    "machine_time_sec": 47513.5704498291,
     "wall_time_per_worker_sec": {
-      "R4": 45537.76300287247
+      "R4": 47513.5704498291
     },
-    "time_per_paper_mean_sec": 10.556943788757751,
-    "time_per_paper_median_sec": 5.425999999999999,
-    "time_per_paper_p95_sec": 36.63529999999999,
-    "machine_time_per_id_sec": 9.107552600574493,
+    "time_per_paper_mean_sec": 10.648872599999999,
+    "time_per_paper_median_sec": 5.427,
+    "time_per_paper_p95_sec": 36.647400000000005,
+    "machine_time_per_id_sec": 9.50271408996582,
     "entry_discovery_total_sec": 395.4,
-    "source_total_sec": 51943.754,
+    "source_total_sec": 51981.663,
     "refs_total_sec": 867.3,
     "arxiv_retry_events": {
       "cut": 463,
@@ -85,13 +85,13 @@
     },
     "n_cooldowns": 5,
     "cooldown_sec_total": 2400.0,
-    "throughput_papers_per_hour": 395.19727833062,
+    "throughput_papers_per_hour": 378.8391364737933,
     "rss_max_bytes": 997994496.0,
-    "rss_mean_bytes": 339316283.071676,
+    "rss_mean_bytes": 339253584.8504748,
     "peak_rss_kernel_bytes": 997814272.0,
-    "disk_max_bytes": 1001471987.0,
-    "output_size_bytes": 946634293,
-    "tables_size_bytes": 38699894
+    "disk_max_bytes": 1002564671.0,
+    "output_size_bytes": 947650201,
+    "tables_size_bytes": 38678509
   },
   "versions_distribution": {
     "1": 4059,

@@ -4693,3 +4693,5 @@
 2026-11-01 08:24:33,050 | lane_0       | get_full_source | WARNING | https://export.arxiv.org/src/2608.08374v3: network error (('Connection broken: IncompleteRead(2097152 bytes read, 40163976 more expected)', IncompleteRead(2097152 bytes read, 40163976 more expected))), attempt 2/4
 2026-11-01 08:24:43,396 | lane_0       | get_full_source | WARNING | https://export.arxiv.org/src/2608.08374v3: network error (('Connection broken: IncompleteRead(2097152 bytes read, 40163976 more expected)', IncompleteRead(2097152 bytes read, 40163976 more expected))), attempt 3/4
 2026-11-01 08:25:21,000 | lane_0       | get_full_source | WARNING | https://export.arxiv.org/src/2608.08374v3: network error (('Connection broken: IncompleteRead(8388608 bytes read, 33872520 more expected)', IncompleteRead(8388608 bytes read, 33872520 more expected))), attempt 4/4
+2026-11-16 14:25:03,470 | MainThread   | numexpr.utils | INFO | NumExpr defaulting to 2 threads.
+2026-11-16 14:25:47,315 | source-writer | get_full_source | INFO | 2608.08374 v3: {'status': 'done', 'kind': 'tar.gz', 'size_bytes': 42261128}

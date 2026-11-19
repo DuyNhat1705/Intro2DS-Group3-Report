@@ -1,0 +1,41 @@
+[
+ {
+  "run_id": "20261119-095716",
+  "parser_version": "m2-1.2.1",
+  "papers": 25000,
+  "workers": 2,
+  "done": 25000,
+  "skipped": 0,
+  "failed": 0,
+  "timeouts": 0,
+  "crashes": 0,
+  "safe_retries": 0,
+  "recycled": 0,
+  "discovery_s": 8.35,
+  "wall_s": 3644.14,
+  "compact_s": 0.0,
+  "paper_ms_mean": 276.74,
+  "paper_ms_median": 194.96,
+  "paper_ms_p95": 758.08,
+  "version_ms_mean": 213.25,
+  "version_ms_median": 160.27,
+  "version_ms_p95": 528.71,
+  "peak_rss_mb": 1147.2,
+  "peak_workers_rss_mb": 969.2,
+  "status_counts": {
+   "ok": 29979,
+   "partial": 72,
+   "empty": 1712
+  },
+  "paragraph_cache_hit_rate": 0.1989,
+  "reused_versions": 426,
+  "output_bytes": {
+   "elements": 670624227,
+   "hierarchy": 60558195,
+   "bibtex": 88962005
+  },
+  "output_bytes_total": 820144427,
+  "work_bytes_total": 140343213,
+  "compaction": null
+ }
+]

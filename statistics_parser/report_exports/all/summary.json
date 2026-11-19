@@ -1,0 +1,32 @@
+{
+ "status": {
+  "ok": 29979,
+  "empty": 1712,
+  "partial": 72
+ },
+ "success_rate_non_empty": 1.0,
+ "success_rate_with_sentence_rule": 0.9999001697114904,
+ "ok_rate_non_empty": 0.9976040730757711,
+ "failed_rate_non_empty": 0.0,
+ "coverage_quantiles": {
+  "0.01": 0.936,
+  "0.05": 0.9942,
+  "0.25": 1.0138,
+  "0.5": 1.0269
+ },
+ "versions_without_sentences": 3,
+ "redundant_files_total": 4788,
+ "compile_files_total": 106496,
+ "dedup": {
+  "papers": 25000,
+  "nodes_before": 15222138,
+  "elements_after": 12525509,
+  "bib_raw": 2681879,
+  "bib_cited_before_dedup": 1128985,
+  "bib_after": 888168,
+  "leaf_repeats_within_version": 259453,
+  "reused_versions": 426
+ },
+ "bib_missing_title_share": 0.024508876699002893,
+ "bib_missing_year_share": 0.006730708604678394
+}

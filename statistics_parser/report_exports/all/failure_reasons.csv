@@ -1,0 +1,7 @@
+status,reason,versions
+empty,no .tex file,1712
+partial,macro_growth_limit,1
+partial,missing_include,38
+partial,no_begin_document,15
+partial,no_sentences,3
+partial,syntax_recovery,16

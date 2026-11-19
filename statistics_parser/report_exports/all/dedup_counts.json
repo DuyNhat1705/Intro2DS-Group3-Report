@@ -1,0 +1,10 @@
+{
+ "papers": 25000,
+ "nodes_before": 15222138,
+ "elements_after": 12525509,
+ "bib_raw": 2681879,
+ "bib_cited_before_dedup": 1128985,
+ "bib_after": 888168,
+ "leaf_repeats_within_version": 259453,
+ "reused_versions": 426
+}
