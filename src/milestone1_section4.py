@@ -18,6 +18,111 @@ STAGES = ['time_metadata_sec', 'time_source_sec', 'time_refs_sec']
 STAGE_NAMES = ['Metadata', 'Source', 'References']
 
 
+def stage_time_by_range_table(data_dir=None):
+    """Sum each recorded stage once, without interpreting it as wall time."""
+    papers = data.papers(data_dir)
+    times = papers.groupby('worker')[STAGES].sum(min_count=1) / 3600
+    times.loc['Total'] = papers[STAGES].sum(min_count=1) / 3600
+    times.columns = [f'{name} (hours)' for name in STAGE_NAMES]
+    times['Total attributed stage time (hours)'] = times.sum(axis=1, min_count=len(STAGES))
+    return times.rename_axis('Range').reset_index()
+
+
+def entry_discovery_time_table(data_dir=None):
+    """Final paper attribution and all logged metadata attempts have distinct scopes.
+
+    Batch durations in timings.jsonl are already amortized across IDs. Sum
+    duration once per row; multiplying by batch_size would double-count work.
+    """
+    papers = data.papers(data_dir)
+    attempts = data.records('timings.jsonl', data_dir)
+    attempts = attempts.loc[attempts.stage.eq('metadata')]
+    rows = []
+    for label, frame in [*papers.groupby('worker'), ('Total', papers)]:
+        logged = attempts if label == 'Total' else attempts.loc[attempts.worker.eq(label)]
+        values = frame.time_metadata_sec.where(
+            np.isfinite(frame.time_metadata_sec) & frame.time_metadata_sec.ge(0))
+        duration = pd.to_numeric(logged.duration, errors='coerce')
+        duration = duration.where(np.isfinite(duration) & duration.ge(0))
+        total = values.sum(min_count=1)
+        rows.append({
+            'Range': label, 'Target papers': len(frame), 'Measured papers': int(values.count()),
+            'Final attributed discovery (s)': total,
+            'Final attributed discovery (min)': total / 60,
+            'Mean attributed discovery (s/paper)': values.mean(),
+            'Logged attempt rows': len(logged),
+            'Measured attempt rows': int(duration.count()),
+            'All logged discovery attempts (s)': duration.sum(min_count=1),
+        })
+    return pd.DataFrame(rows)
+
+
+def _paper_stage_times(data_dir=None):
+    papers = data.papers(data_dir).copy()
+    stages = papers[STAGES].apply(pd.to_numeric, errors='coerce')
+    stages = stages.where(np.isfinite(stages) & stages.ge(0))
+    papers[STAGES] = stages
+    # Require every stage: a missing source timer is not zero processing time.
+    papers['complete_attributed_sec'] = stages.sum(axis=1, min_count=len(STAGES))
+    return papers
+
+
+def paper_processing_time_table(data_dir=None):
+    """Per-stage distributions and strict complete-stage totals, in seconds."""
+    papers = _paper_stage_times(data_dir)
+    rows = []
+    for column, name in [*zip(STAGES, STAGE_NAMES),
+                         ('complete_attributed_sec', 'Total (all stages measured)')]:
+        values = papers[column].dropna()
+        rows.append({
+            'Measure': name, 'Measured papers': len(values),
+            'Excluded papers': len(papers) - len(values),
+            'Sum (s)': values.sum(min_count=1), 'Mean (s/paper)': values.mean(),
+            'Median (s)': values.median(), '95th percentile (s)': values.quantile(.95),
+            'Maximum (s)': values.max(),
+        })
+    return pd.DataFrame(rows)
+
+
+def paper_time_by_range_table(data_dir=None):
+    papers = _paper_stage_times(data_dir)
+    rows = []
+    for label, frame in [*papers.groupby('worker'), ('Total', papers)]:
+        values = frame.complete_attributed_sec.dropna()
+        rows.append({'Range': label, 'Target papers': len(frame),
+                     'Complete timing rows': len(values),
+                     'Incomplete timing rows': len(frame) - len(values),
+                     'Mean total attributed (s/paper)': values.mean(),
+                     'Median total attributed (s)': values.median(),
+                     '95th percentile total attributed (s)': values.quantile(.95)})
+    return pd.DataFrame(rows)
+
+
+def paper_timing_examples_table(data_dir=None, n=5):
+    """Show the slowest complete rows for inspection; ties are resolved by ID."""
+    papers = _paper_stage_times(data_dir).dropna(subset=['complete_attributed_sec'])
+    selected = papers.sort_values(['complete_attributed_sec', 'arxiv_id'], ascending=[False, True]).head(n)
+    columns = ['worker', 'arxiv_id', 'num_versions', *STAGES, 'complete_attributed_sec']
+    return selected[columns].rename(columns=dict(zip(
+        columns, ['Range', 'arXiv ID', 'Versions', 'Metadata (s)', 'Source (s)',
+                  'References (s)', 'Total attributed (s)']))).reset_index(drop=True)
+
+
+def collection_wall_time_table(data_dir=None):
+    """Whole-system elapsed measures, kept separate from paper-attributed times."""
+    runs = data.runs(data_dir)
+    active, calendar = data.elapsed(runs)
+    worker = runs.wall_sec.where(runs.wall_sec.ge(0)).sum(min_count=1)
+    return pd.DataFrame([
+        {'Measure': 'Calendar elapsed', 'Hours': calendar / 3600,
+         'Scope': 'First session start to last end, including downtime'},
+        {'Measure': 'Active collection elapsed', 'Hours': active / 3600,
+         'Scope': 'Union of all worker session intervals; overlaps counted once'},
+        {'Measure': 'Worker time', 'Hours': worker / 3600,
+         'Scope': 'Sum of session durations; simultaneous workers counted separately'},
+    ])
+
+
 def hardware_41(data_dir=None):
     """One row per session: preserve hardware and configuration changes."""
     starts = data.records('runs.jsonl', data_dir)
@@ -85,20 +190,193 @@ def measurement_coverage_41(data_dir=None):
     return pd.DataFrame({'Measurement': list(counts),
                          f'Sessions with data (of {len(runs)})': [int(count) for count in counts.values()]})
 
+def session_duration_41(data_dir=None):
+    runs = data.runs(data_dir)
+
+    fig, axes = plt.subplots(
+        len(data.WORKERS),
+        1,
+        figsize=(12, 3 * len(data.WORKERS)),
+        sharey=True,
+        layout="constrained",
+        squeeze=False,
+    )
+
+    for ax, worker in zip(axes[:, 0], data.WORKERS):
+        selected = runs.loc[
+            runs.worker.eq(worker)
+            & runs.start.notna()
+            & runs.end.notna()
+            & runs.end.ge(runs.start)
+        ].sort_values("start")
+
+        durations = (selected.end - selected.start) / 3600
+        sessions = np.arange(1, len(selected) + 1)
+
+        ax.bar(
+            sessions,
+            durations,
+            color="#427aab",
+            edgecolor="white",
+        )
+
+        ax.set(
+            title=f"{worker} — session durations",
+            xlabel="Session (ordered by start time)",
+            ylabel="Duration (hours)",
+        )
+        ax.set_ylim(bottom=0)
+        ax.xaxis.set_major_locator(
+            plt.MaxNLocator(integer=True, nbins=15)
+        )
+        ax.grid(axis="y", alpha=0.3)
+        ax.set_axisbelow(True)
+
+        if selected.empty:
+            ax.text(
+                0.5, 0.5, "No valid sessions",
+                transform=ax.transAxes,
+                ha="center",
+            )
+
+    return fig
 
 def session_timeline_41(data_dir=None):
     runs = data.runs(data_dir)
-    fig, ax = data.figure('Recorded worker sessions (UTC; gaps are downtime)', figsize=(13, 5))
-    for i, worker in enumerate(data.WORKERS):
-        for run in runs.loc[runs.worker.eq(worker)].itertuples():
-            if pd.isna(run.start) or pd.isna(run.end) or run.end < run.start:
-                continue
-            start = mdates.date2num(pd.to_datetime(run.start, unit='s', utc=True))
-            ax.broken_barh([(start, (run.end-run.start)/86400)], (i-.3, .6))
-    ax.set_yticks(range(len(data.WORKERS)), data.WORKERS)
-    ax.xaxis_date()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d\n%H:%M'))
-    ax.set_xlabel('UTC date / time')
+
+    valid = runs.loc[
+        runs.worker.isin(data.WORKERS)
+        & runs.start.notna()
+        & runs.end.notna()
+        & runs.end.ge(runs.start)
+    ].sort_values("start")
+
+    if len(valid) < 2:
+        raise ValueError("At least two valid sessions are required.")
+
+    starts = valid.start.to_numpy(dtype=float)
+    ends = valid.end.to_numpy(dtype=float)
+
+    # Tìm gap giữa các session, có xét session chồng lấn.
+    running_end = np.maximum.accumulate(ends)
+    gaps = starts[1:] - running_end[:-1]
+    split = int(np.argmax(gaps))
+
+    if gaps[split] <= 0:
+        raise ValueError("No gap available for a broken time axis.")
+
+    gap_start = running_end[split]
+    gap_end = starts[split + 1]
+    gap_days = (gap_end - gap_start) / 86400
+
+    windows = [
+        (starts.min(), gap_start),
+        (gap_end, ends.max()),
+    ]
+
+    fig, axes = plt.subplots(
+        1, 2,
+        figsize=(13, 5),
+        sharey=True,
+        gridspec_kw={"width_ratios": [4, 1]},
+    )
+    fig.subplots_adjust(wspace=0.08, bottom=0.22, top=0.82)
+
+    for panel, (ax, (lower, upper)) in enumerate(zip(axes, windows)):
+        color = "#427aab" if panel == 0 else "#d68a32"
+
+        for i, worker in enumerate(data.WORKERS):
+            selected = valid.loc[
+                valid.worker.eq(worker)
+                & valid.end.ge(lower)
+                & valid.start.le(upper)
+            ]
+
+            intervals = [
+                (
+                    mdates.date2num(
+                        pd.to_datetime(run.start, unit="s", utc=True)
+                    ),
+                    (run.end - run.start) / 86400,
+                )
+                for run in selected.itertuples()
+            ]
+
+            if intervals:
+                ax.broken_barh(
+                    intervals,
+                    (i - 0.3, 0.6),
+                    facecolors=color,
+                )
+            if panel == 1:
+                for run in selected.itertuples():
+                    midpoint = pd.to_datetime(
+                        (run.start + run.end) / 2,
+                        unit="s",
+                        utc=True,
+                    )
+                    duration_minutes = (run.end - run.start) / 60
+
+                    ax.text(
+                        mdates.date2num(midpoint),
+                        i + 0.36,
+                        f"{duration_minutes:.2f} min",
+                        ha="center",
+                        fontsize=9,
+                    )
+
+        margin = max((upper - lower) * 0.05, 60)
+
+        ax.set_xlim(
+            mdates.date2num(
+                pd.to_datetime(lower - margin, unit="s", utc=True)
+            ),
+            mdates.date2num(
+                pd.to_datetime(upper + margin, unit="s", utc=True)
+            ),
+        )
+
+        locator = mdates.AutoDateLocator(
+            minticks=3, maxticks=7 if panel == 0 else 3
+        )
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(
+            mdates.DateFormatter("%m-%d\n%H:%M", tz="UTC")
+        )
+        ax.grid(axis="x", alpha=0.2)
+        ax.set_axisbelow(True)
+        ax.set_xlabel("UTC date / time")
+
+    axes[0].set_yticks(range(len(data.WORKERS)), data.WORKERS)
+    axes[0].set_ylim(-0.6, len(data.WORKERS) - 0.4)
+    axes[0].set_title("Main collection")
+    axes[1].set_title("Later session - zoomed")
+
+    # Ẩn cạnh nối và thêm dấu ngắt trục.
+    axes[0].spines["right"].set_visible(False)
+    axes[1].spines["left"].set_visible(False)
+    axes[1].tick_params(axis="y", left=False, labelleft=False)
+
+    for ax, x in [(axes[0], 1), (axes[1], 0)]:
+        ax.plot(
+            [x, x], [0, 1],
+            transform=ax.transAxes,
+            marker=[(-1, -0.6), (1, 0.6)],
+            markersize=12,
+            linestyle="none",
+            color="black",
+            clip_on=False,
+        )
+
+    fig.suptitle("Recorded worker sessions (UTC)")
+    fig.text(
+        0.5, 0.03,
+        f"{gap_days:.2f} days without recorded sessions omitted; "
+        "panels use different time scales.",
+        ha="center",
+        fontsize=9,
+    )
+
     return fig
 
 
@@ -125,29 +403,103 @@ def stage_duration_per_paper_42(data_dir=None):
     return fig
 
 
-def _resource_plot(name, time_column, value_columns, divisor, title, ylabel, data_dir):
+def _resource_plot(
+    name, time_column, value_columns,
+    divisor, title, ylabel, data_dir
+):
     frame = data.exports(name, data_dir)
-    fig, axes = plt.subplots(len(data.WORKERS), 1, figsize=(13, 12), sharex=True, layout='constrained')
-    for ax, worker in zip(axes, data.WORKERS):
-        selected = frame.loc[frame.worker.eq(worker)]
-        # Separate line per session: never bridge a restart/downtime interval.
-        for i, (_, session) in enumerate(selected.groupby('run_id', sort=False)):
+
+    fig, axes = plt.subplots(
+        len(data.WORKERS),
+        1,
+        figsize=(13, 12),
+        sharex=False,
+        layout="constrained",
+        squeeze=False,
+    )
+
+    colors = plt.get_cmap("tab10").colors
+
+    for ax, worker in zip(axes[:, 0], data.WORKERS):
+        selected = (
+            frame.loc[frame.worker.eq(worker)]
+            .dropna(subset=[time_column, "run_id"])
+            .sort_values(time_column)
+        )
+
+        offset = 0.0
+
+        # Session được sắp theo thời điểm có mẫu đầu tiên.
+        for i, (_, session) in enumerate(
+            selected.groupby("run_id", sort=False)
+        ):
             session = session.sort_values(time_column)
-            timestamps = pd.to_datetime(session[time_column], unit='s', utc=True)
-            for column, label in value_columns:
-                ax.plot(timestamps, session[column]/divisor, label=label if i == 0 else None, marker='.', markersize=2)
-        ax.set_ylabel(f'{worker}\n{ylabel}')
-        ax.legend(loc='upper left')
-    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%m-%d\n%H:%M'))
-    axes[-1].set_xlabel('UTC date / time')
+
+            elapsed = (
+                session[time_column] - session[time_column].iloc[0]
+            ) / 3600
+
+            x = offset + elapsed
+
+            # Đánh dấu ranh giới giữa các session.
+            if i > 0:
+                ax.axvline(
+                    offset,
+                    color="gray",
+                    linestyle=":",
+                    linewidth=0.8,
+                    alpha=0.5,
+                )
+
+            for j, (column, label) in enumerate(value_columns):
+                ax.plot(
+                    x,
+                    session[column] / divisor,
+                    color=colors[j % len(colors)],
+                    label=label if i == 0 else None,
+                    marker=".",
+                    markersize=2,
+                    linewidth=1,
+                )
+
+            offset += elapsed.iloc[-1]
+
+        ax.set(
+            title=worker,
+            xlabel="Cumulative observed session time (hours)",
+            ylabel=ylabel,
+        )
+        ax.set_xlim(left=0)
+        ax.grid(alpha=0.2)
+        ax.set_axisbelow(True)
+
+        if not selected.empty:
+            ax.legend(loc="upper left", fontsize=8)
+        else:
+            ax.text(
+                0.5, 0.5, "No recorded samples",
+                transform=ax.transAxes,
+                ha="center",
+            )
+
     fig.suptitle(title)
+
     return fig
 
 
 def memory_over_execution_43(data_dir=None):
-    return _resource_plot('monitor.csv', 'minute', [('rss_mean_bytes', 'Minute mean RSS'),
-                          ('rss_max_bytes', 'Minute sampled peak RSS')], data.MIB,
-                          'Sampled process RSS by worker and session', 'MiB', data_dir)
+    return _resource_plot(
+        "monitor.csv",
+        "minute",
+        [
+            ("rss_mean_bytes", "Minute mean RSS"),
+            ("rss_max_bytes", "Minute sampled peak RSS"),
+        ],
+        data.MIB,
+        "Sampled process RSS over observed session time",
+        "MiB",
+        data_dir,
+    )
 
 
 def directory_size_over_time_43(data_dir=None):

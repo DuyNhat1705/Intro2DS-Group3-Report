@@ -12,6 +12,90 @@ except ImportError:
     import _milestone1_data as data
 
 
+def collection_outcomes_table(data_dir=None):
+    """Final paper outcomes, including a total computed from paper rows."""
+    papers = data.papers(data_dir)
+    rows = []
+    for label, frame in [*papers.groupby('worker'), ('Total', papers)]:
+        rows.append({
+            'Range': label, 'Target IDs': len(frame),
+            'Metadata completed': int(frame.metadata.eq('done').sum()),
+            'Source processing completed': int(frame.source.eq('done').sum()),
+            'Successful papers': int(frame.paper_success.sum()),
+            'Success rate (%)': frame.paper_success.mean() * 100,
+        })
+    return pd.DataFrame(rows)
+
+
+def version_distribution_table(data_dir=None):
+    papers = data.papers(data_dir)
+    counts = papers.loc[papers.metadata.eq('done'), 'num_versions'].value_counts().sort_index()
+    return pd.DataFrame({
+        'Versions per paper': counts.index.astype(int),
+        'Papers': counts.to_numpy(),
+        'Share of target papers (%)': counts.to_numpy() / len(papers) * 100,
+    })
+
+
+def version_outcomes_table(data_dir=None):
+    columns = ['n_versions_done', 'n_versions_no_tex', 'n_versions_not_found']
+    counts = data.papers(data_dir).groupby('worker')[columns].sum(min_count=1)
+    counts.loc['Total'] = counts.sum(min_count=1)
+    counts.columns = ['done', 'no_tex', 'not_found']
+    return counts.rename_axis('Range').reset_index()
+
+
+def source_sizes_table(data_dir=None):
+    """All rows use the same valid size-pair population; bytes are content sizes."""
+    papers, _ = data.paired_sizes(data_dir)
+    rows = []
+    for label, unit, divisor, operation in [
+        ('Total', 'GiB', data.GIB, lambda s: s.sum(min_count=1)),
+        ('Mean per paper', 'bytes', 1, lambda s: s.mean()),
+        ('Mean per paper', 'MiB', data.MIB, lambda s: s.mean()),
+        ('Median per paper', 'MiB', data.MIB, lambda s: s.median()),
+        ('95th percentile', 'MiB', data.MIB, lambda s: s.quantile(.95)),
+        ('Maximum', 'MiB', data.MIB, lambda s: s.max()),
+    ]:
+        rows.append({'Statistic': label, 'Unit': unit, 'Valid pairs': len(papers),
+                     'Extracted content': operation(papers.size_full_bytes) / divisor,
+                     'Retained TeX/Bib': operation(papers.size_tex_bib_bytes) / divisor})
+    return pd.DataFrame(rows)
+
+
+def reference_outcomes_table(data_dir=None):
+    papers = data.papers(data_dir)
+    rows = []
+    for label, frame in [*papers.groupby('worker'), ('Total', papers)]:
+        counts = frame.refs.value_counts()
+        row = {'Range': label, 'Target IDs': len(frame)}
+        row.update({status: int(counts.get(status, 0)) for status in ['ok', 'no_refs', 'not_found']})
+        row['Missing status'] = int(frame.refs.isna().sum())
+        row['Nonempty lookup rate (%)'] = frame.refs.eq('ok').mean() * 100
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def reference_fields_table(data_dir=None):
+    """Count field presence from the returned Parquet records, in bounded batches."""
+    import pyarrow.parquet as pq
+
+    columns = ['ref_title', 'ref_authors', 'ref_submission_date', 'ref_arxiv_id', 'ref_s2_id']
+    counts, total = pd.Series(0, index=columns, dtype='int64'), 0
+    for worker in data.WORKERS:
+        path = data.root(data_dir) / 'tables' / worker / 'references_all.parquet'
+        for batch in pq.ParquetFile(path).iter_batches(columns=columns):
+            frame = batch.to_pandas()
+            total += len(frame)
+            for column in columns:
+                counts[column] += int(frame[column].map(_present).sum())
+    return pd.DataFrame({
+        'Reference field': columns, 'Nonempty rows': counts.to_numpy(),
+        'Completeness (%)': counts.to_numpy() / total * 100 if total else np.nan,
+        'Missing or empty rows': total - counts.to_numpy(),
+    })
+
+
 def success_fail_31(data_dir=None):
     papers = data.papers(data_dir)
     counts = papers.paper_success.value_counts().reindex([True, False], fill_value=0)
@@ -90,10 +174,12 @@ def extracted_retained_size_32(data_dir=None):
     )
 
     # Biểu đồ 2: Histogram chồng, dùng chung các khoảng dung lượng
-    after_positive = after[after.gt(0)]
+    before_mb = before / 1_000_000
+    after_mb = after[after.gt(0)] / 1_000_000
+
     values = np.concatenate([
-        before.to_numpy(),
-        after_positive.to_numpy(),
+        before_mb.to_numpy(),
+        after_mb.to_numpy(),
     ])
 
     lo, hi = values.min(), values.max()
@@ -103,14 +189,14 @@ def extracted_retained_size_32(data_dir=None):
     bins = np.geomspace(lo, hi, 35)
 
     axes[1].hist(
-        before,
+        before_mb,
         bins=bins,
         alpha=0.6,
         color="#F28E2B",
         label="Extracted",
     )
     axes[1].hist(
-        after_positive,
+        after_mb,
         bins=bins,
         alpha=0.6,
         color="#4E79A7",
@@ -119,9 +205,9 @@ def extracted_retained_size_32(data_dir=None):
 
     axes[1].set(
         xscale="log",
-        xlabel="Paper size (bytes)",
+        xlabel="Paper size (MiB)",
         ylabel="Papers",
-        title="Paper size before and after source filtering",
+        title="Paper size distributions before and after source filtering",
     )
     axes[1].legend()
     axes[1].grid(alpha=0.3)
@@ -166,15 +252,46 @@ def size_concentration_32(data_dir=None):
 
 def reference_count_33(data_dir=None):
     papers = data.papers(data_dir)
-    selected = papers.loc[papers.refs.eq('ok') & papers.n_refs.notna()]
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5), layout='constrained')
-    axes[0].hist(selected.n_refs, bins=60, edgecolor='white')
-    axes[0].set(xlabel='Returned references per paper', ylabel='Papers (log frequency)', yscale='log', title=f"refs='ok' only (n={len(selected):,})")
-    axes[1].boxplot([selected.loc[selected.worker.eq(w), 'n_refs'] for w in data.WORKERS], tick_labels=data.WORKERS, showfliers=False)
-    axes[1].set(ylabel='Returned references', title='Successful lookups; outliers hidden')
-    compatible = papers[['n_refs', 'n_refs_arxiv']].dropna()
-    coverage = compatible.n_refs_arxiv.sum()/compatible.n_refs.sum() if compatible.n_refs.sum() else np.nan
-    fig.suptitle(f'arXiv-linked share of returned references: {coverage:.2%} (compatible nonmissing rows)')
+    selected = papers.loc[
+        papers.refs.eq("ok") & papers.n_refs.notna()
+    ]
+
+    fig, ax = plt.subplots(
+        figsize=(9, 5), layout="constrained"
+    )
+
+    ax.hist(selected.n_refs, bins=60, edgecolor="white")
+
+    mean = selected.n_refs.mean()
+    median = selected.n_refs.median()
+
+    ax.axvline(
+        mean,
+        color="tab:red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Mean: {mean:.2f}",
+    )
+    ax.axvline(
+    median,
+    color="black",
+    linestyle="-",
+    linewidth=2.5,
+    label=f"Median: {median:.2f}",
+    zorder=5,
+)
+
+    ax.set(
+        xlabel="Returned references per paper",
+        ylabel="Papers (log frequency)",
+        yscale="log",
+        title=(
+            "Distribution of returned reference counts\n"
+            f"Successful lookups only (n={len(selected):,})"
+        ),
+    )
+    ax.legend()
+
     return fig
 
 
@@ -201,17 +318,163 @@ def lookup_outcome_33(data_dir=None):
         rot=0,
         color=[colors.get(column, "tab:gray") for column in counts.columns],
     )
+    totals = counts.sum(axis=1)
+
     for container, column in zip(ax.containers, counts.columns):
-        ax.bar_label(container, labels=[f'{n:,}\n{100*n/total:.2f}%' if n/total >= .01 else '' for n, total in zip(counts[column], counts.sum(axis=1))], label_type='center', fontsize=8)
-    if 'not_found' in counts:
-        for i, n in enumerate(counts.not_found):
-            ax.text(i, 102, f'not_found: {n}', ha='center', fontsize=8)
+        labels = [
+            f"{100*n/total:.2f}%"
+            if total > 0 and (column == "not_found" or n/total >= .01)
+            else ""
+            for n, total in zip(counts[column], totals)
+        ]
+        if column == "not_found":
+            for bar in container:
+                if bar.get_height() > 0:
+                    bar.set_edgecolor("tab:orange")
+                    bar.set_linewidth(1.5)
+
+        ax.bar_label(
+            container,
+            labels=labels,
+            label_type="edge" if column == "not_found" else "center",
+            padding=3 if column == "not_found" else 0,
+            fontsize=8,
+        )
+    
     ax.set_ylim(0, 110)
     ax.set_xlabel('Range')
     ax.legend(title='Outcome', loc='upper left', bbox_to_anchor=(1.01, 1))
     return fig
 
+def reference_lookup_rate_33(data_dir=None):
+    """Plot nonempty reference lookup rates by range."""
+    papers = data.papers(data_dir)
 
+    rate = (
+        papers.groupby("worker").refs
+        .agg(lambda values: values.eq("ok").mean() * 100)
+        .reindex(data.WORKERS)
+    )
+
+    fig, ax = plt.subplots(
+        figsize=(9, 5), layout="constrained"
+    )
+
+    colors = [
+        "#d68a32" if worker == "R5" else "#427aab"
+        for worker in data.WORKERS
+    ]
+
+    bars = ax.bar(data.WORKERS, rate, color=colors)
+    ax.bar_label(bars, fmt="%.2f%%", padding=3)
+
+    ax.set(
+        title="Nonempty reference lookup rates by range",
+        xlabel="Range",
+        ylabel="Target papers with nonempty references (%)",
+        ylim=(0, 105),
+    )
+
+    return fig
+
+def metadata_coverage_33(data_dir=None):
+    """Plot metadata completeness and arXiv link coverage by range."""
+    try:
+        import pyarrow.parquet as pq
+    except ImportError as exc:
+        raise ImportError(
+            "Install the Parquet dependency: pip install pyarrow"
+        ) from exc
+
+    # Đếm các trường không rỗng trong toàn bộ reference trả về.
+    columns = [
+        "ref_title",
+        "ref_authors",
+        "ref_submission_date",
+        "ref_arxiv_id",
+        "ref_s2_id",
+    ]
+
+    totals = pd.Series(0, index=columns, dtype="int64")
+    n = 0
+
+    for worker in data.WORKERS:
+        path = (
+            data.root(data_dir)
+            / "tables"
+            / worker
+            / "references_all.parquet"
+        )
+
+        schema = pq.read_schema(path).names
+        if set(columns) - set(schema):
+            raise ValueError(
+                f"Unexpected reference schema in {path}: {schema}"
+            )
+
+        for batch in pq.ParquetFile(path).iter_batches(columns=columns):
+            frame = batch.to_pandas()
+            n += len(frame)
+
+            for column in columns:
+                totals[column] += frame[column].map(_present).sum()
+
+    completeness = (
+        totals / n * 100
+        if n else totals.astype(float) * np.nan
+    )
+
+    # Tỷ lệ reference có arXiv ID trong từng range.
+    papers = data.papers(data_dir)
+    groups = papers.groupby("worker")
+
+    total_refs = groups.n_refs.sum()
+    linked_refs = groups.n_refs_arxiv.sum()
+
+    coverage = (
+        linked_refs / total_refs.replace(0, np.nan) * 100
+    ).reindex(data.WORKERS)
+
+    fig, axes = plt.subplots(
+        1, 2, figsize=(15, 5), layout="constrained"
+    )
+
+    # Biểu đồ trái: Metadata completeness.
+    bars = axes[0].barh(
+        columns, completeness, color="#427aab"
+    )
+    axes[0].bar_label(
+        bars,
+        labels=[f"{value:.2f}%" for value in completeness],
+        padding=3,
+    )
+    axes[0].set(
+        title=f"Reference metadata completeness (n={n:,})",
+        xlabel="Returned rows with a nonempty field (%)",
+        xlim=(0, 115),
+    )
+    axes[0].invert_yaxis()
+
+    # Biểu đồ phải: arXiv-linked coverage theo range.
+    colors = [
+        "#d68a32" if worker == "R5" else "#427aab"
+        for worker in data.WORKERS
+    ]
+
+    bars = axes[1].bar(
+        data.WORKERS, coverage, color=colors
+    )
+    axes[1].bar_label(
+        bars, fmt="%.2f%%", padding=3
+    )
+    axes[1].set(
+        title="arXiv-linked reference coverage by range",
+        xlabel="Range",
+        ylabel="Linked / all returned references (%)",
+        ylim=(0, 105),
+    )
+
+    return fig
 def reference_profiles_33(data_dir=None):
     """Separate nonempty lookup rates, reference yield, and arXiv link coverage."""
     papers = data.papers(data_dir)
