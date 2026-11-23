@@ -35,7 +35,7 @@ jobs:
 
       - name: Execute report tables and figures
         working-directory: Reports
-        run: python -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=300 Report1.ipynb
+        run: python -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=300 Report1.ipynb Report2.ipynb
 
       - name: Build HTML
         working-directory: Reports
